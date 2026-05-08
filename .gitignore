@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Unit test / coverage reports
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+
+# Type checker
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Packaging
+build/
+dist/
+*.egg-info/
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Env files / secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Django/Flask style files (harmless if not used)
+*.sqlite3
+*.db
+
+# Supabase / local dev (if present)
+supabase/.temp/
+supabase/migrations/
+
+# IDEs
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local runtime files
+*.pid
+*.seed
+
