@@ -1,50 +1,55 @@
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
-from services.ai_service import generate_outfit
-from services.supabase_service import get_user_profile, get_wardrobe_items, save_suggestion
+from fastapi import APIRouter, Request
+from services.ai_service import generate_outfit, validate_clothing
+from services.supabase_service import get_user_profile, get_wardrobe_items
 
 router = APIRouter()
 
-class OutfitRequest(BaseModel):
-    request_id: str
-    user_id: str
 
 @router.post("/generate")
-async def generate_outfit_endpoint(request: OutfitRequest):
+async def generate_outfit_route(request: Request):
     try:
-        # Step 1 — Get user profile from Supabase
-        user_profile = await get_user_profile(request.user_id)
-        if not user_profile:
-            raise HTTPException(status_code=404, detail="User not found")
+        body = await request.json()
+        request_id = body.get('request_id')
+        user_id = body.get('user_id')
 
-        # Step 2 — Get user's wardrobe from Supabase
-        wardrobe = await get_wardrobe_items(request.user_id)
+        if not request_id or not user_id:
+            return {"error": "Missing request_id or user_id"}
 
-        # Step 3 — Get the outfit request details
+        user_profile = await get_user_profile(user_id)
+        wardrobe = await get_wardrobe_items(user_id)
+
         from services.supabase_service import get_outfit_request
-        outfit_request = await get_outfit_request(request.request_id)
-        if not outfit_request:
-            raise HTTPException(status_code=404, detail="Request not found")
+        outfit_request = await get_outfit_request(request_id)
+        occasion = outfit_request.get('occasion_slug', 'college_casual')
+        extra_context = outfit_request.get('extra_context', '')
 
-        # Step 4 — Generate outfit using Gemini AI
         suggestions = await generate_outfit(
             user_profile=user_profile,
             wardrobe=wardrobe,
-            occasion=outfit_request['occasion_slug'],
-            extra_context=outfit_request.get('extra_context', '')
+            occasion=occasion,
+            extra_context=extra_context
         )
 
-        # Step 5 — Save suggestions to database
-        saved = await save_suggestion(
-            request_id=request.request_id,
-            suggestions=suggestions
-        )
-
-        return {
-            "success": True,
-            "suggestions": suggestions,
-            "suggestion_id": saved['id']
-        }
+        return {"suggestions": suggestions}
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        print(f"Outfit generation error: {e}")
+        return {"error": str(e)}
+
+
+@router.post("/validate-item")
+async def validate_wardrobe_item(request: Request):
+    try:
+        body = await request.json()
+        image_base64 = body.get('image_base64', '')
+        category = body.get('category', 'top')
+
+        if not image_base64:
+            return {"is_clothing": True, "reason": "no image provided"}
+
+        result = await validate_clothing(image_base64, category)
+        return result
+
+    except Exception as e:
+        print(f"Validation error: {e}")
+        return {"is_clothing": True, "reason": "error, allowing upload"}
